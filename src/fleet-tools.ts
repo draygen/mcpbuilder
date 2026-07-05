@@ -116,6 +116,31 @@ async function runAgent(
 const MACHINES: Machine[] = ["wsl", "draydev", "ec2"];
 const AGENTS: AgentName[] = ["claude", "codex", "agy"];
 
+// ---------------------------------------------------------------------------
+// Structured status — shared by the fleet_status MCP tool and the read-only
+// HTTP fleet gateway (fleet-gateway.ts) so both surfaces run the same probe.
+// ---------------------------------------------------------------------------
+export type FleetCheck = { agent: AgentName; machine: Machine; ok: boolean; detail: string };
+
+export async function runFleetStatus(
+  filter: { machine?: Machine; agent?: AgentName } = {}
+): Promise<FleetCheck[]> {
+  const machines = filter.machine ? [filter.machine] : MACHINES;
+  const agents = filter.agent ? [filter.agent] : AGENTS;
+  // Fan out every agent×machine probe in parallel; each is a neutral arithmetic
+  // prompt that avoids content-safeguard false negatives from trivial "reply OK".
+  const combos = machines.flatMap((m) => agents.map((a) => ({ m, a })));
+  return Promise.all(
+    combos.map(async ({ m, a }) => {
+      const out = await runAgent(m, a, "What is 2+2? Reply with only the number.", {
+        timeoutMs: 60_000,
+      });
+      const ok = /\b4\b/.test(out) && !/^\[fleet (error|timeout|guard)/.test(out);
+      return { agent: a, machine: m, ok, detail: out.replace(/\s+/g, " ").slice(0, 120) };
+    })
+  );
+}
+
 export const fleetTools: Tool[] = [
   {
     name: "fleet_run",
@@ -220,20 +245,13 @@ export async function handleFleetTool(
     }
 
     if (name === "fleet_status") {
-      const machines = args.machine ? [String(args.machine) as Machine] : MACHINES;
-      const agents = args.agent ? [String(args.agent) as AgentName] : AGENTS;
-      const lines: string[] = [];
-      for (const m of machines) {
-        for (const a of agents) {
-          // Neutral arithmetic probe — avoids content-safeguard false negatives
-          // that a trivial "reply OK" prompt can trigger on some models.
-          const out = await runAgent(m, a, "What is 2+2? Reply with only the number.", {
-            timeoutMs: 60_000,
-          });
-          const good = /\b4\b/.test(out) && !/^\[fleet (error|timeout|guard)/.test(out);
-          lines.push(`${good ? "✓" : "✗"} ${a}@${m}: ${out.replace(/\s+/g, " ").slice(0, 80)}`);
-        }
-      }
+      const checks = await runFleetStatus({
+        machine: args.machine ? (String(args.machine) as Machine) : undefined,
+        agent: args.agent ? (String(args.agent) as AgentName) : undefined,
+      });
+      const lines = checks.map(
+        (c) => `${c.ok ? "✓" : "✗"} ${c.agent}@${c.machine}: ${c.detail.slice(0, 80)}`
+      );
       return ok(`[fleet status]\n${lines.join("\n")}`);
     }
 

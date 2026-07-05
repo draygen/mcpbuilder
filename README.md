@@ -39,7 +39,17 @@ npm install
 npm run build     # tsc → dist/
 npm start         # node dist/index.js  (stdio server)
 npm run dev       # tsx src/index.ts     (no build step)
+npm run gateway   # node dist/fleet-gateway.js  (read-only fleet status over HTTP :5100)
 ```
+
+### Fleet gateway
+
+`fleet-gateway.ts` is a tiny **read-only** HTTP service (localhost `:5100`) that exposes the same
+`fleet_status` probe used by the MCP `fleet_status` tool, so a web page can read machine/agent
+health even though the MCP server itself is stdio-only. It backs AION's `/fleet` topology page.
+It serves health only — never `fleet_run`/exec — with a background-refreshed cache so page loads
+stay fast. Endpoints: `GET /health`, `GET /fleet/status`. Config: `FLEET_GATEWAY_PORT` (5100),
+`FLEET_GATEWAY_HOST` (127.0.0.1), `FLEET_GATEWAY_TTL_MS` (120000).
 
 The compiled `dist/` is committed so the server runs via `npx`/`node dist/index.js`
 without a build step on the client machine.
