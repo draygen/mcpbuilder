@@ -46,10 +46,16 @@ npm run gateway   # node dist/fleet-gateway.js  (read-only fleet status over HTT
 
 `fleet-gateway.ts` is a tiny **read-only** HTTP service (localhost `:5100`) that exposes the same
 `fleet_status` probe used by the MCP `fleet_status` tool, so a web page can read machine/agent
-health even though the MCP server itself is stdio-only. It backs AION's `/fleet` topology page.
-It serves health only — never `fleet_run`/exec — with a background-refreshed cache so page loads
-stay fast. Endpoints: `GET /health`, `GET /fleet/status`. Config: `FLEET_GATEWAY_PORT` (5100),
-`FLEET_GATEWAY_HOST` (127.0.0.1), `FLEET_GATEWAY_TTL_MS` (120000).
+health even though the MCP server itself is stdio-only. It backs AION's `/fleet` topology page and chat control hook.
+
+- `GET /health`, `GET /fleet/status` — read-only, background-refreshed cache (fast page loads).
+- `POST /fleet/run`, `POST /fleet/review` — guarded writes wrapping `fleet_run` / `fleet_review`.
+
+Writes are gated: if `FLEET_GATEWAY_TOKEN` is set they require a matching `x-fleet-token`
+header (the status probe stays open); set `FLEET_GATEWAY_WRITE=off` to disable writes
+entirely. AION stages a confirmation before calling the write endpoints. Config:
+`FLEET_GATEWAY_PORT` (5100), `FLEET_GATEWAY_HOST` (127.0.0.1), `FLEET_GATEWAY_TTL_MS` (120000),
+`FLEET_GATEWAY_TOKEN`, `FLEET_GATEWAY_WRITE`.
 
 The compiled `dist/` is committed so the server runs via `npx`/`node dist/index.js`
 without a build step on the client machine.
