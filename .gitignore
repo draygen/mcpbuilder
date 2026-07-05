@@ -1,0 +1,10 @@
+node_modules/
+
+# Secrets / local runtime config — never commit
+.env
+.env.*
+claude_desktop_config.json
+
+# Logs
+*.log
+npm-debug.log*

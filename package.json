@@ -1,0 +1,26 @@
+{
+  "name": "aion-mcp",
+  "version": "1.0.0",
+  "description": "MCP server for AION v2 — memory, conversations, services, image generation",
+  "type": "module",
+  "bin": {
+    "aion-mcp": "./dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx src/index.ts",
+    "start": "node dist/index.js"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.0",
+    "better-sqlite3": "^12.6.2",
+    "ssh2": "^1.17.0"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.11",
+    "@types/node": "^22.0.0",
+    "@types/ssh2": "^1.15.5",
+    "tsx": "^4.19.0",
+    "typescript": "^5.7.0"
+  }
+}
